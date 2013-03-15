@@ -24,7 +24,7 @@ class NoeqTest < Test::Unit::TestCase
     FakeNoeqd.stop
     FakeNoeqd.start(4545)
 
-    noeq = Noeq.new('localhost', 4545)
+    noeq = Noeq.new(Noeq::DEFAULT_HOST, 4545)
     assert_equal expected_id, noeq.generate
   end
 
@@ -39,14 +39,14 @@ class NoeqTest < Test::Unit::TestCase
   end
 
   def test_async_generate
-    noeq = Noeq.new('localhost', 4444, :async => true)
+    noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444, :async => true)
     noeq.request_id
     sleep 0.0001
     assert_equal expected_id, noeq.fetch_id
   end
 
   def test_async_request_with_disconnected_server_raises
-    noeq = Noeq.new('localhost', 4444, :async => true)
+    noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444, :async => true)
     FakeNoeqd.stop
     assert_raises(Errno::EPIPE) { noeq.request_id }
   end

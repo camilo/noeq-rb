@@ -5,6 +5,7 @@
 require 'socket'
 
 class Noeq
+  DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
 
   # If you just want to test out `noeq` or need to use it in a one-off script,
   # this method allows for very simple usage.
@@ -17,7 +18,7 @@ class Noeq
 
   # `Noeq.new` defaults to connecting to `localhost:4444` with async off.
   # The `options` hash is used so that we are verbose when turning async on.
-  def initialize(host = 'localhost', port = 4444, options = {})
+  def initialize(host = DEFAULT_HOST, port = 4444, options = {})
     @host, @port, @async = host, port, options[:async]
     connect
   end
