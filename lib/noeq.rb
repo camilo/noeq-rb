@@ -7,7 +7,7 @@ require 'socket'
 class Noeq
   class ReadTimeoutError < StandardError; end
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
-  SECS_READ_TIMEOUT_FOR_SYCN = 0.1
+  SECS_READ_TIMEOUT_FOR_SYNC = 0.1
 
   # If you just want to test out `noeq` or need to use it in a one-off script,
   # this method allows for very simple usage.
@@ -116,7 +116,7 @@ class Noeq
     # or a timeout is reached (the fourth argument). We don't do the `select`
     # if we are in async mode.
     unless @async
-      ready = IO.select([@socket], nil, nil, SECS_READ_TIMEOUT_FOR_SYCN) 
+      ready = IO.select([@socket], nil, nil, SECS_READ_TIMEOUT_FOR_SYNC)
       raise ReadTimeoutError unless ready
     end
 
