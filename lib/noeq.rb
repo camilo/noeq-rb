@@ -128,7 +128,8 @@ class Noeq
     # available this will raise `Errno::EAGAIN` which will propagate up and
     # could cause a retry.
     data = @socket.recv_nonblock(4)
-    raise ReadError unless data.length == 4
-    data.unpack("N").first
+    unpacked = data.unpack("N").first
+
+    unpacked.nil? ? raise ReadError : unpacked
   end
 end
