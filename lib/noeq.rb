@@ -10,6 +10,8 @@ class Noeq
 
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
   SECS_READ_TIMEOUT_FOR_SYNC = 0.1
+  MAX_RETRIES = 3
+  RETRY_ON_INITIALIZE_EXCEPTIONS = [Errno::ETIMEDOUT, Errno::ECONNREFUSED]
 
   # If you just want to test out `noeq` or need to use it in a one-off script,
   # this method allows for very simple usage.
@@ -24,33 +26,7 @@ class Noeq
   # The `options` hash is used so that we are verbose when turning async on.
   def initialize(host = DEFAULT_HOST, port = 4444, options = {})
     @host, @port, @async = host, port, options[:async]
-    connect
-  end
-
-  # The first thing that we need to do is connect to the `noeqd` server.
-  def connect(failures=0)
-    # We create a new TCP `STREAM` socket. There are a few other types of
-    # sockets, but this is the most common.
-    @socket = Socket.new(:INET, :STREAM)
-
-    # If the connection fails after 0.5 seconds, immediately retry.
-    set_socket_timeouts 0.5
-
-    # In order to create a socket connection we need an address object.
-    address = Socket.sockaddr_in(@port, @host)
-
-    # If async is enabled, we establish the connection in nonblocking mode,
-    # otherwise we connect normally, which will wait until the connection is
-    # established.
-    @async ? @socket.connect_nonblock(address) : @socket.connect(address)
-
-  rescue Errno::EINPROGRESS
-    # `Socket.connect_nonblock` raises `Errno::EINPROGRESS` if the socket isn't
-    # connected instantly. It will be connected in the background, so we ignore
-    # the exception
-  rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED
-    raise if failures == 3
-    connect(failures + 1)
+    with_retry(RETRY_ON_INITIALIZE_EXCEPTIONS) { connect }
   end
 
   def disconnect
@@ -62,18 +38,15 @@ class Noeq
   # The workhorse generate method. Defaults to one id, but up to 255 can be
   # requested.
   def generate(n=1)
-    request_id(n)
-    fetch_id(n)
+    with_retry([StandardError], [ReadError, ReadTimeoutError]) do |failures|
+      if failures > 0
+        disconnect
+        connect
+      end
 
-    # If something goes wrong, we reconnect and retry. There is a slim chance
-    # that this will result in an infinite loop, but most errors are raised in
-    # the reconnect step and won't get re-rescued here.
-  rescue ReadTimeoutError, ReadError
-    raise
-  rescue => exception
-    disconnect
-    connect
-    retry
+      request_id(n)
+      fetch_id(n)
+    end
   end
 
   def request_id(n=1)
@@ -95,6 +68,41 @@ class Noeq
   alias :fetch_ids :fetch_id
 
   private
+
+  def with_retry(retry_exceptions, raise_exceptions=[])
+    failures ||=0
+    yield failures
+
+  rescue *raise_exceptions
+    raise
+
+  rescue *retry_exceptions
+    failures += 1
+    retry if failures < MAX_RETRIES
+    raise
+  end
+
+  def connect
+    # We create a new TCP `STREAM` socket. There are a few other types of
+    # sockets, but this is the most common.
+    @socket = Socket.new(:INET, :STREAM)
+
+    # If the connection fails after 0.5 seconds, immediately retry.
+    set_socket_timeouts 0.5
+
+    # In order to create a socket connection we need an address object.
+    address = Socket.sockaddr_in(@port, @host)
+
+    # If async is enabled, we establish the connection in nonblocking mode,
+    # otherwise we connect normally, which will wait until the connection is
+    # established.
+    @async ? @socket.connect_nonblock(address) : @socket.connect(address)
+
+  rescue Errno::EINPROGRESS
+  # `Socket.connect_nonblock` raises `Errno::EINPROGRESS` if the socket isn't
+  # connected instantly. It will be connected in the background, so we ignore
+  # the exception
+  end
 
   def set_socket_timeouts(timeout)
     secs = Integer(timeout)

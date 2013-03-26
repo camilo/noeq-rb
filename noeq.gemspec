@@ -13,4 +13,5 @@ Gem::Specification.new do |gem|
   gem.name          = "noeq"
   gem.require_paths = ["lib"]
   gem.version       = "0.2.0"
+  gem.add_development_dependency('mocha')
 end
