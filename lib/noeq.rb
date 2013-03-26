@@ -68,7 +68,7 @@ class Noeq
     # If something goes wrong, we reconnect and retry. There is a slim chance
     # that this will result in an infinite loop, but most errors are raised in
     # the reconnect step and won't get re-rescued here.
-  rescue ReadTimeoutError,ReadError
+  rescue ReadTimeoutError, ReadError
     raise
   rescue => exception
     disconnect
@@ -105,15 +105,6 @@ class Noeq
   end
 
   def get_id
-    # `noeqd` sends us a 64-bit unsigned integer in network (big-endian) byte
-    # order, but Ruby 1.8 doesn't have a native unpack directive for this, so we
-    # do it manually by shifting the high bits and adding the low bits.
-    high, low = read_long, read_long
-    return unless high && low
-    (high << 32) + low
-  end
-
-  def read_long
     # `IO.select` blocks until one of the sockets passed in has an event
     # or a timeout is reached (the fourth argument). We don't do the `select`
     # if we are in async mode.
@@ -124,11 +115,11 @@ class Noeq
 
     # Since `select` has already blocked for us, we are pretty sure that
     # there is data available on the socket, so we try to fetch 4 bytes and
-    # unpack them as a 32-bit big-endian unsigned integer. If there is no data
+    # unpack them as a 64-bit big-endian unsigned integer. If there is no data
     # available this will raise `Errno::EAGAIN` which will propagate up and
     # could cause a retry.
-    data = @socket.recv_nonblock(4)
-    unpacked = data.unpack("N").first
+    data = @socket.recv_nonblock(8)
+    unpacked = data.unpack("Q>").first
 
     unpacked.nil? ? (raise ReadError) : unpacked
   end
