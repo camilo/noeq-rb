@@ -55,7 +55,7 @@ class NoeqdFailureConditionTest < Test::Unit::TestCase
 
   def test_connection_errors_on_generate_will_be_retried_upto_3_times
     FakeNoeqd.start
-    Noeq::RETRY_EXCEPTIONS.each do |error|
+    [Errno::ECONNREFUSED, Errno::ETIMEDOUT].each do |error|
       noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444)
       noeq.expects(:connect).times(3).raises(error)
       assert_raises(error) do

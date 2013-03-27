@@ -12,8 +12,6 @@ class Noeq
   DEFAULT_PORT = 4444
   SECS_READ_TIMEOUT_FOR_SYNC = 0.1
   MAX_RETRIES = 3
-  RETRY_EXCEPTIONS = [Errno::ETIMEDOUT, Errno::ECONNREFUSED]
-  RAISE_EXCEPTIONS = [ReadError, ReadTimeoutError]
 
   # If you just want to test out `noeq` or need to use it in a one-off script,
   # this method allows for very simple usage.
@@ -51,10 +49,7 @@ class Noeq
     request_id(n)
     fetch_id(n)
 
-  rescue *RAISE_EXCEPTIONS
-    raise
-
-  rescue *RETRY_EXCEPTIONS
+  rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED
     failures += 1
     retry if failures < MAX_RETRIES
     raise
@@ -109,10 +104,8 @@ class Noeq
     raise ReadTimeoutError unless ready
 
     # Since `select` has already blocked for us, we are pretty sure that
-    # there is data available on the socket, so we try to fetch 4 bytes and
-    # unpack them as a 64-bit big-endian unsigned integer. If there is no data
-    # available this will raise `Errno::EAGAIN` which will propagate up and
-    # could cause a retry.
+    # there is data available on the socket, so we try to fetch 8 bytes and
+    # unpack them as a 64-bit big-endian unsigned integer.
     data = @socket.recv_nonblock(8)
     unpacked = data.unpack("Q>").first
 
