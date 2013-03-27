@@ -9,9 +9,11 @@ class Noeq
   class ReadError < StandardError; end
 
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
+  DEFAULT_PORT = 4444
   SECS_READ_TIMEOUT_FOR_SYNC = 0.1
   MAX_RETRIES = 3
-  RETRY_ON_INITIALIZE_EXCEPTIONS = [Errno::ETIMEDOUT, Errno::ECONNREFUSED]
+  RETRY_EXCEPTIONS = [Errno::ETIMEDOUT, Errno::ECONNREFUSED]
+  RAISE_EXCEPTIONS = [ReadError, ReadTimeoutError]
 
   # If you just want to test out `noeq` or need to use it in a one-off script,
   # this method allows for very simple usage.
@@ -22,31 +24,38 @@ class Noeq
     ids
   end
 
-  # `Noeq.new` defaults to connecting to `localhost:4444` with async off.
-  # The `options` hash is used so that we are verbose when turning async on.
-  def initialize(host = DEFAULT_HOST, port = 4444, options = {})
-    @host, @port, @async = host, port, options[:async]
-    with_retry(RETRY_ON_INITIALIZE_EXCEPTIONS) { connect }
+  def initialize(host = DEFAULT_HOST, port = DEFAULT_PORT)
+    @host, @port = host, port
   end
 
   def disconnect
     # If the socket has already been closed by the other side, `close` will
     # raise, so we rescue it.
     @socket.close rescue false
+  ensure
+    @socket = nil
   end
 
   # The workhorse generate method. Defaults to one id, but up to 255 can be
   # requested.
   def generate(n=1)
-    with_retry([StandardError], [ReadError, ReadTimeoutError]) do |failures|
-      if failures > 0
-        disconnect
-        connect
-      end
+    failures ||=0
 
-      request_id(n)
-      fetch_id(n)
+    if failures > 0 || @socket.nil?
+      disconnect
+      connect
     end
+
+    request_id(n)
+    fetch_id(n)
+
+  rescue *RAISE_EXCEPTIONS
+    raise
+
+  rescue *RETRY_EXCEPTIONS
+    failures += 1
+    retry if failures < MAX_RETRIES
+    raise
   end
 
   def request_id(n=1)
@@ -69,19 +78,6 @@ class Noeq
 
   private
 
-  def with_retry(retry_exceptions, raise_exceptions=[])
-    failures ||=0
-    yield failures
-
-  rescue *raise_exceptions
-    raise
-
-  rescue *retry_exceptions
-    failures += 1
-    retry if failures < MAX_RETRIES
-    raise
-  end
-
   def connect
     # We create a new TCP `STREAM` socket. There are a few other types of
     # sockets, but this is the most common.
@@ -93,15 +89,7 @@ class Noeq
     # In order to create a socket connection we need an address object.
     address = Socket.sockaddr_in(@port, @host)
 
-    # If async is enabled, we establish the connection in nonblocking mode,
-    # otherwise we connect normally, which will wait until the connection is
-    # established.
-    @async ? @socket.connect_nonblock(address) : @socket.connect(address)
-
-  rescue Errno::EINPROGRESS
-  # `Socket.connect_nonblock` raises `Errno::EINPROGRESS` if the socket isn't
-  # connected instantly. It will be connected in the background, so we ignore
-  # the exception
+    @socket.connect(address)
   end
 
   def set_socket_timeouts(timeout)
@@ -114,12 +102,9 @@ class Noeq
 
   def get_id
     # `IO.select` blocks until one of the sockets passed in has an event
-    # or a timeout is reached (the fourth argument). We don't do the `select`
-    # if we are in async mode.
-    unless @async
-      ready = IO.select([@socket], nil, nil, SECS_READ_TIMEOUT_FOR_SYNC)
-      raise ReadTimeoutError unless ready
-    end
+    # or a timeout is reached (the fourth argument)
+    ready = IO.select([@socket], nil, nil, SECS_READ_TIMEOUT_FOR_SYNC)
+    raise ReadTimeoutError unless ready
 
     # Since `select` has already blocked for us, we are pretty sure that
     # there is data available on the socket, so we try to fetch 4 bytes and
