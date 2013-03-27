@@ -1,4 +1,5 @@
 require 'test/unit'
+require 'mocha'
 require './lib/noeq'
 
 class NoeqSimpleTest < Test::Unit::TestCase
@@ -38,12 +39,6 @@ class NoeqSimpleTest < Test::Unit::TestCase
     assert_equal expected_id, noeq.generate
   end
 
-  def test_async_generate
-    noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444, :async => true)
-    noeq.request_id
-    sleep 0.0001
-    assert_equal expected_id, noeq.fetch_id
-  end
 
   private
 
@@ -58,9 +53,15 @@ class NoeqdFailureConditionTest < Test::Unit::TestCase
     FakeNoeqd.stop
   end
 
-  def test_async_request_with_disconnected_server_raises
-    noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444, :async => true)
-    assert_raises(Errno::EPIPE) { noeq.request_id }
+  def test_connection_errors_on_generate_will_be_retried_upto_3_times
+    FakeNoeqd.start
+    [Errno::ECONNREFUSED, Errno::ETIMEDOUT].each do |error|
+      noeq = Noeq.new(Noeq::DEFAULT_HOST, 4444)
+      noeq.expects(:connect).times(3).raises(error)
+      assert_raises(error) do
+        noeq.generate(100)
+      end
+    end
   end
 
   def test_sync_request_with_unresponsive_server_after_connect_raises
@@ -102,7 +103,7 @@ class FakeNoeqd
   end
 
   def self.stop
-    @server.stop
+    @server.stop if @server
   end
 
   def initialize(port, options)
