@@ -39,10 +39,12 @@ class Noeq
   # The workhorse generate method. Defaults to one id, but up to 255 can be
   # requested.
   def generate(n=1)
-    failures ||=0
+    failures ||= 0
 
-    if failures > 0 || @socket.nil?
+    if failures > 0
       disconnect
+      connect
+    elsif @socket.nil?
       connect
     end
 
