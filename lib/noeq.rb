@@ -109,6 +109,10 @@ class Noeq
     data = @socket.recv_nonblock(8)
     unpacked = data.unpack("Q>").first
 
-    unpacked.nil? ? (raise ReadError) : unpacked
+    if unpacked.nil? 
+      raise ReadError, "Error while reading from #{@host}:#{@port} data: #{data.inspect}"
+    else
+      unpacked
+    end
   end
 end
