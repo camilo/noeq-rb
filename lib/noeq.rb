@@ -49,7 +49,7 @@ class Noeq
     request_id(n)
     fetch_id(n)
 
-  rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED
+  rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED, Errno::EPIPE
     failures += 1
     retry if failures < MAX_RETRIES
     raise
@@ -109,7 +109,7 @@ class Noeq
     data = @socket.recv_nonblock(8)
     unpacked = data.unpack("Q>").first
 
-    if unpacked.nil? 
+    if unpacked.nil?
       raise ReadError, "Error while reading from #{@host}:#{@port} data: #{data.inspect}"
     else
       unpacked
