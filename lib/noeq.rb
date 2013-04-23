@@ -5,9 +5,10 @@
 require 'socket'
 
 class Noeq
-  class ReadTimeoutError < StandardError; end
-  class ReadError < StandardError; end
-  class NoeqEOFError < StandardError; end
+  class NoeqError < StandardError; end
+  class ReadTimeoutError < NoeqError; end
+  class ReadError < NoeqError; end
+  class NoeqEOFError < NoeqError; end
 
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
   DEFAULT_PORT = 4444
