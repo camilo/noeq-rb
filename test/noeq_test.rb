@@ -73,7 +73,7 @@ class NoeqdFailureConditionTest < Test::Unit::TestCase
   def test_sync_request_with_disconnecting_server_after_connect_raises
     FakeNoeqd.start(5555, :action => :disconnect_read)
     noeq = Noeq.new(Noeq::DEFAULT_HOST, 5555)
-    assert_raises(Noeq::NoeqEOFError){  noeq.generate }
+    assert_raises(Noeq::EOFError){  noeq.generate }
   end
 
   def test_generate_when_server_never_accepts_raises

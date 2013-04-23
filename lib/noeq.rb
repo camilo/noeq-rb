@@ -8,7 +8,7 @@ class Noeq
   class NoeqError < StandardError; end
   class ReadTimeoutError < NoeqError; end
   class ReadError < NoeqError; end
-  class NoeqEOFError < NoeqError; end
+  class EOFError < NoeqError; end
 
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
   DEFAULT_PORT = 4444
@@ -114,7 +114,7 @@ class Noeq
     # data. The meaning depends on the socket: EOF on TCP, empty packet on UDP,
     # etc.
     if data == ""
-      raise NoeqEOFError, "#{@host}:#{@port} has closed the connection"
+      raise EOFError, "#{@host}:#{@port} has closed the connection"
     else
       unpacked = data.unpack("Q>").first
 
