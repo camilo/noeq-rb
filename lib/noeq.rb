@@ -5,8 +5,10 @@
 require 'socket'
 
 class Noeq
-  class ReadTimeoutError < StandardError; end
-  class ReadError < StandardError; end
+  class NoeqError < StandardError; end
+  class ReadTimeoutError < NoeqError; end
+  class ReadError < NoeqError; end
+  class EOFError < NoeqError; end
 
   DEFAULT_HOST = RUBY_PLATFORM =~ /darwin/ ? '127.0.0.1' : 'localhost'
   DEFAULT_PORT = 4444
@@ -107,12 +109,20 @@ class Noeq
     # there is data available on the socket, so we try to fetch 8 bytes and
     # unpack them as a 64-bit big-endian unsigned integer.
     data = @socket.recv_nonblock(8)
-    unpacked = data.unpack("Q>").first
 
-    if unpacked.nil?
-      raise ReadError, "Error while reading from #{@host}:#{@port} data: #{data.inspect}"
+    # When recvfrom(2) returns 0, #recv_nonblock returns an empty string as
+    # data. The meaning depends on the socket: EOF on TCP, empty packet on UDP,
+    # etc.
+    if data == ""
+      raise EOFError, "#{@host}:#{@port} has closed the connection"
     else
-      unpacked
+      unpacked = data.unpack("Q>").first
+
+      if unpacked.nil?
+        raise ReadError, "Error while reading from #{@host}:#{@port} data: #{data.inspect}"
+      else
+        unpacked
+      end
     end
   end
 end
