@@ -1,10 +1,10 @@
-# **Noeq** generates GUIDs using [noeqd](https://github.com/bmizerany/noeqd).
+# **Noeq53** generates GUIDs using [noeq53](https://github.com/Shopify/noeq53).
 
-# `noeqd` uses a simple TCP wire protocol, so let's require our only dependency,
+# `noeq53` uses a simple TCP wire protocol, so let's require our only dependency,
 # `socket`.
 require 'socket'
 
-class Noeq
+class Noeq53
   class NoeqError < StandardError; end
   class ReadTimeoutError < NoeqError; end
   class ReadError < NoeqError; end
@@ -15,7 +15,7 @@ class Noeq
   SECS_READ_TIMEOUT_FOR_SYNC = 0.1
   MAX_RETRIES = 3
 
-  # If you just want to test out `noeq` or need to use it in a one-off script,
+  # If you just want to test out `noeq53` or need to use it in a one-off script,
   # this method allows for very simple usage.
   def self.generate(n=1, idspace=0)
     noeq = new
@@ -58,7 +58,7 @@ class Noeq
   end
 
   def request_id(n=1, idspace=0)
-    # The integer is packed into a binary byte and sent to the `noeqd` server.
+    # The integer is packed into a binary byte and sent to the `noeq53` server.
     # The second argument to `BasicSocket#send` is a bitmask of flags, we don't
     # need anything special, so it is set to zero.
     @socket.send [n, idspace].pack('cc'), 0
@@ -66,7 +66,7 @@ class Noeq
   alias :request_ids :request_id
 
   def fetch_id(n=1)
-    # We collect the ids from the `noeqd` server.
+    # We collect the ids from the `noeq53` server.
     ids = (1..n).map { get_id }.compact
 
     # If we have more than one id, we return the array, otherwise we return the
