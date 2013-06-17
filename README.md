@@ -1,13 +1,11 @@
 # noeq-rb
 
-noeq-rb is a [noeqd](https://github.com/bmizerany/noeqd) GUID client in Ruby.
-
-[Annotated source code is available](http://titanous.com/noeq-rb/).
+noeq-rb is a [noeqd](https://github.com/shopify/noeqd) GUID client in Ruby.
 
 ## Installation
 
 ```
-gem install noeq
+Add this repo to your Gemfile
 ```
 
 ## Usage
@@ -16,7 +14,7 @@ gem install noeq
 
 ```ruby
 require 'noeq'
-Noeq.generate(2) #=> [142692304753262592, 142692304753262593]
+Noeq.generate(2) #=> [75774574592, 75774574608]
 ```
 
 ### Regular usage
@@ -25,7 +23,7 @@ Noeq.generate(2) #=> [142692304753262592, 142692304753262593]
 require 'noeq'
 
 noeq = Noeq.new('idserver.local')
-noeq.generate #=> 142692638036852736
-noeq.generate(5) #=> [142692782450933760, 142692782450933761, 142692782450933762, 142692782450933763, 142692782450933764]
+noeq.generate #=> 75759828992
+noeq.generate(5) #=> [75768020992, 75768021008, 75768021024, 75768021040, 75768021056]
 ```
 
