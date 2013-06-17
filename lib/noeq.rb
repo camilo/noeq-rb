@@ -49,7 +49,7 @@ class Noeq
     end
 
     request_id(n, idspace)
-    fetch_id(n, idspace)
+    fetch_id(n)
 
   rescue Errno::ETIMEDOUT, Errno::ECONNREFUSED, Errno::EPIPE
     failures += 1
@@ -65,9 +65,9 @@ class Noeq
   end
   alias :request_ids :request_id
 
-  def fetch_id(n=1, idspace=0)
+  def fetch_id(n=1)
     # We collect the ids from the `noeqd` server.
-    ids = (1..n).map { get_id(idspace) }.compact
+    ids = (1..n).map { get_id }.compact
 
     # If we have more than one id, we return the array, otherwise we return the
     # single id.

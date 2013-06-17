@@ -43,7 +43,7 @@ class NoeqSimpleTest < Test::Unit::TestCase
   private
 
   def expected_id
-    144897448664367104
+    82257233859
   end
 end
 
@@ -124,19 +124,20 @@ class FakeNoeqd
     else
       while conn = @socket.accept
         while true
-          n = conn.read(1)
+          cmd = conn.read(2)
+          n, idspace = cmd.unpack('cc')
           return conn.close if @options[:action] == :disconnect_read
 
           if @options[:action] == :block_read
             sleep(100)
           end
-          data = "\x02\x02\xC7v<\x80\x00\x00"
+          data = "\x00\x00\x00\x13&\xE9\xC7\xC3"
           if @options[:action] == :short_write
-            data = "\x02\x02v<\x80\x00\x00"
+            data = data[0..6]
           elsif @options[:action] == :long_write
-            data = "\x02\x02\xC7v<\x80\x00\x00\x00"
+            data = data + "\xC0"
           end
-          conn.send data * n.unpack('c')[0], 0
+          conn.send data * n, 0
         end
       end
     end
